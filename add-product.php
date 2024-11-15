@@ -1,45 +1,58 @@
 <?php
+// Start the session at the top
+session_start();
+
 if (isset($_POST['submit'])) {
     include('db_connection.php');
 
+    // Ensure the form fields are captured properly
     $name = $_POST['name'];
     $category = $_POST['category'];
     $quantity = $_POST['quantity'];
     $size = $_POST['size'];
     $price = $_POST['price'];
-    
+
     // Handle the uploaded image file
     $target_dir = "uploads/";
     $target_file = $target_dir . basename($_FILES["image"]["name"]);
-    
+    $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+
     // Check if the user is logged in; if not, redirect to the login page
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    header("Location: login.php");
-    exit;
-}
-
-    // Move the uploaded file to the target directory
-    if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-        // Prepare the SQL query
-        $sql = "INSERT INTO tb_inventory (name, category, quantity, size, price, image_url) VALUES (?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        
-        // Bind the parameters (note the number of parameters matches the SQL statement)
-        $stmt->bind_param('ssisss', $name, $category, $quantity, $size, $price, $target_file);
-
-        if ($stmt->execute()) {
-            $message = "<p class='message success'>New product added successfully.</p>";
-        } else {
-            $message = "<p class='message error'>Error: " . $stmt->error . "</p>";
-        }
-
-        $stmt->close();
-    } else {
-        $message = "<p class='message error'>Error uploading image.</p>";
+    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+        header("Location: login.php");
+        exit;
     }
-    
+
+    // Validate the uploaded file type (allow any image)
+    $check = getimagesize($_FILES["image"]["tmp_name"]);
+    if ($check === false) {
+        $message = "<p class='message error'>File is not an image.</p>";
+    } else {
+        // Move the uploaded file to the target directory
+        if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+            // Prepare the SQL query
+            $sql = "INSERT INTO tb_inventory (name, category, quantity, size, price, image_url) VALUES (?, ?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+
+            // Bind the parameters (note the number of parameters matches the SQL statement)
+            $stmt->bind_param('ssisss', $name, $category, $quantity, $size, $price, $target_file);
+
+            if ($stmt->execute()) {
+                $message = "<p class='message success'>New product added successfully.</p>";
+            } else {
+                $message = "<p class='message error'>Error: " . $stmt->error . "</p>";
+            }
+
+            $stmt->close();
+        } else {
+            $message = "<p class='message error'>Error uploading image.</p>";
+        }
+    }
+
+    // Close the database connection
     $conn->close();
-}?>
+}
+?>
 
 
 <!DOCTYPE html>
@@ -176,6 +189,7 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     <div class="container">
         <h1 class="text-2xl font-bold mb-4">Add New Product</h1>
         <?php
+        // Show the message after form submission
         if (isset($message)) {
             echo $message;
         }
@@ -207,6 +221,7 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     </div>
 
     <script>
+        // Dark mode toggle functionality (as per previous code)
         document.addEventListener('DOMContentLoaded', function() {
             if (localStorage.getItem('darkMode') === 'enabled') {
                 document.body.classList.add('dark-mode');
